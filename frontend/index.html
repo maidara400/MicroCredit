@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MicroCredit — ISI L3</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<nav id="navbar" class="hidden">
+  <div class="nav-brand">MicroCredit</div>
+  <div class="nav-links">
+    <span id="nav-user"></span>
+    <button onclick="logout()" class="btn btn-sm btn-outline">Déconnexion</button>
+  </div>
+</nav>
+
+<!-- ===== AUTH ===== -->
+<div id="page-auth">
+  <div class="auth-card">
+    <h1>MicroCredit</h1>
+    <p class="subtitle">Gestion de microcrédit — ISI L3 2025-2026</p>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('login')">Connexion</button>
+      <button class="tab" onclick="showTab('register')">Inscription</button>
+    </div>
+
+    <!-- Login -->
+    <form id="form-login" onsubmit="login(event)">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" required placeholder="client@microcredit.sn">
+      </div>
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <input type="password" id="login-password" required placeholder="••••••••">
+      </div>
+      <div id="login-error" class="error hidden"></div>
+      <button type="submit" class="btn btn-primary btn-full">Se connecter</button>
+      <div class="demo-accounts">
+        <p>Comptes de démo :</p>
+        <button type="button" onclick="fillDemo('admin@microcredit.sn','Admin1234!')">Admin</button>
+        <button type="button" onclick="fillDemo('agent@microcredit.sn','Agent1234!')">Agent</button>
+        <button type="button" onclick="fillDemo('client@microcredit.sn','Client1234!')">Client</button>
+      </div>
+    </form>
+
+    <!-- Register -->
+    <form id="form-register" class="hidden" onsubmit="register(event)">
+      <div class="form-group">
+        <label>Prénom</label>
+        <input type="text" id="reg-firstname" required>
+      </div>
+      <div class="form-group">
+        <label>Nom</label>
+        <input type="text" id="reg-lastname" required>
+      </div>
+      <div class="form-group">
+        <label>Nom d'utilisateur</label>
+        <input type="text" id="reg-username" required>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" required>
+      </div>
+      <div class="form-group">
+        <label>Téléphone</label>
+        <input type="text" id="reg-phone" placeholder="77 000 00 00">
+      </div>
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <input type="password" id="reg-password" required>
+      </div>
+      <div class="form-group">
+        <label>Confirmer le mot de passe</label>
+        <input type="password" id="reg-password2" required>
+      </div>
+      <div id="register-error" class="error hidden"></div>
+      <button type="submit" class="btn btn-primary btn-full">S'inscrire</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="page-dashboard" class="hidden">
+  <div class="container">
+
+    <!-- CLIENT DASHBOARD -->
+    <div id="dash-client" class="hidden">
+      <h2>Tableau de bord — Client</h2>
+      <div class="cards-row" id="client-stats"></div>
+
+      <div class="section">
+        <div class="section-header">
+          <h3>Mes demandes de prêt</h3>
+          <button class="btn btn-primary" onclick="showModal('modal-demande')">+ Nouvelle demande</button>
+        </div>
+        <div id="client-demandes"></div>
+      </div>
+
+      <div class="section">
+        <h3>Mon prêt actif</h3>
+        <div id="client-pret"></div>
+      </div>
+
+      <div class="section">
+        <h3>Plan de remboursement</h3>
+        <div id="client-echeances"></div>
+      </div>
+    </div>
+
+    <!-- AGENT DASHBOARD -->
+    <div id="dash-agent" class="hidden">
+      <h2>Tableau de bord — Agent de crédit</h2>
+      <div class="section">
+        <h3>Dossiers en attente</h3>
+        <div id="agent-demandes-attente"></div>
+      </div>
+      <div class="section">
+        <h3>Tous les dossiers</h3>
+        <div id="agent-demandes-all"></div>
+      </div>
+      <div class="section">
+        <h3>Échéances en retard</h3>
+        <div id="agent-retards"></div>
+      </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD -->
+    <div id="dash-admin" class="hidden">
+      <h2>Tableau de bord — Administrateur</h2>
+      <div class="cards-row" id="admin-stats"></div>
+      <div class="section">
+        <div class="section-header">
+          <h3>Utilisateurs</h3>
+          <button class="btn btn-primary" onclick="showModal('modal-create-user')">+ Créer un agent</button>
+        </div>
+        <div id="admin-users"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+<!-- Modal nouvelle demande -->
+<div id="modal-demande" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Nouvelle demande de prêt</h3>
+      <button onclick="hideModal('modal-demande')" class="close-btn">&times;</button>
+    </div>
+    <form onsubmit="submitDemande(event)">
+      <div class="form-group">
+        <label>Montant souhaité (FCFA)</label>
+        <input type="number" id="dem-montant" min="10000" max="5000000" required placeholder="ex: 200000">
+        <small>Entre 10 000 et 5 000 000 FCFA</small>
+      </div>
+      <div class="form-group">
+        <label>Durée de remboursement (mois)</label>
+        <input type="number" id="dem-duree" min="1" max="36" required placeholder="ex: 12">
+        <small>Entre 1 et 36 mois</small>
+      </div>
+      <div id="dem-mensualite" class="info-box hidden"></div>
+      <div class="form-group">
+        <label>Motif du prêt</label>
+        <textarea id="dem-motif" required rows="3" placeholder="Décrivez l'objet de votre demande..."></textarea>
+      </div>
+      <div id="dem-error" class="error hidden"></div>
+      <div class="modal-footer">
+        <button type="button" onclick="hideModal('modal-demande')" class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-primary">Soumettre</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal refus -->
+<div id="modal-refus" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Refuser la demande</h3>
+      <button onclick="hideModal('modal-refus')" class="close-btn">&times;</button>
+    </div>
+    <form onsubmit="submitRefus(event)">
+      <input type="hidden" id="refus-demande-id">
+      <div class="form-group">
+        <label>Motif du refus</label>
+        <textarea id="refus-motif" required rows="3" placeholder="Expliquez le motif du refus..."></textarea>
+      </div>
+      <div id="refus-error" class="error hidden"></div>
+      <div class="modal-footer">
+        <button type="button" onclick="hideModal('modal-refus')" class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-danger">Confirmer le refus</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal créer utilisateur -->
+<div id="modal-create-user" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Créer un utilisateur</h3>
+      <button onclick="hideModal('modal-create-user')" class="close-btn">&times;</button>
+    </div>
+    <form onsubmit="createUser(event)">
+      <div class="form-group">
+        <label>Prénom</label>
+        <input type="text" id="cu-firstname" required>
+      </div>
+      <div class="form-group">
+        <label>Nom</label>
+        <input type="text" id="cu-lastname" required>
+      </div>
+      <div class="form-group">
+        <label>Nom d'utilisateur</label>
+        <input type="text" id="cu-username" required>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="cu-email" required>
+      </div>
+      <div class="form-group">
+        <label>Rôle</label>
+        <select id="cu-role">
+          <option value="agent">Agent de crédit</option>
+          <option value="client">Client</option>
+          <option value="admin">Administrateur</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <input type="password" id="cu-password" required>
+      </div>
+      <div id="cu-error" class="error hidden"></div>
+      <div class="modal-footer">
+        <button type="button" onclick="hideModal('modal-create-user')" class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-primary">Créer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
