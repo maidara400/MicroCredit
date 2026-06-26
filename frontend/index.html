@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MicroCredit — ISI L3</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -264,11 +265,59 @@
 
         <!-- Overview -->
         <div id="admin-section-overview">
+
+          <!-- Stat cards -->
           <div class="cards-row" id="admin-stats"></div>
-          <div class="section">
-            <div class="section-header"><h3>Indicateurs clés</h3></div>
-            <div class="kpi-grid" id="admin-kpi"></div>
+
+          <!-- KPI gauges row -->
+          <div class="kpi-gauge-row" id="admin-kpi"></div>
+
+          <!-- Graphiques ligne 1 : Donut demandes + Barres activité -->
+          <div class="charts-row">
+            <div class="section chart-card">
+              <div class="section-header">
+                <h3>Répartition des demandes</h3>
+                <span class="chart-subtitle" id="chart-dem-total"></span>
+              </div>
+              <div class="chart-wrap-sm">
+                <canvas id="chart-demandes"></canvas>
+              </div>
+              <div class="chart-legend" id="legend-demandes"></div>
+            </div>
+            <div class="section chart-card">
+              <div class="section-header">
+                <h3>Activité mensuelle</h3>
+                <span class="chart-subtitle">6 derniers mois</span>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="chart-activite"></canvas>
+              </div>
+            </div>
           </div>
+
+          <!-- Graphiques ligne 2 : Donut prêts + Barres remboursement -->
+          <div class="charts-row">
+            <div class="section chart-card">
+              <div class="section-header">
+                <h3>État du portefeuille</h3>
+                <span class="chart-subtitle" id="chart-pret-total"></span>
+              </div>
+              <div class="chart-wrap-sm">
+                <canvas id="chart-prets"></canvas>
+              </div>
+              <div class="chart-legend" id="legend-prets"></div>
+            </div>
+            <div class="section chart-card">
+              <div class="section-header">
+                <h3>Remboursements (FCFA)</h3>
+                <span class="chart-subtitle" id="chart-remb-subtitle"></span>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="chart-remboursements"></canvas>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- Users -->

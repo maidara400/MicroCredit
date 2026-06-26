@@ -1,6 +1,8 @@
 const API = '/api';
 let allUsers = [];
 let parametresPret = null;
+// Références aux instances Chart.js pour les détruire avant recréation
+const _charts = {};
 
 // ===== TOKEN & SESSION =====
 const getToken   = () => localStorage.getItem('access_token');
@@ -580,27 +582,65 @@ async function loadAdminDash() {
   allUsers = await usersRes.json();
   const demandes = await demandesRes.json();
 
-  document.getElementById('admin-stats').innerHTML = `
-    <div class="stat-card"><div class="stat-value">${stats.utilisateurs.total}</div><div class="stat-label">Utilisateurs</div></div>
-    <div class="stat-card warning"><div class="stat-value">${stats.demandes.en_attente}</div><div class="stat-label">En attente</div></div>
-    <div class="stat-card success"><div class="stat-value">${stats.prets.actifs}</div><div class="stat-label">Prêts actifs</div></div>
-    <div class="stat-card"><div class="stat-value">${fmtK(stats.prets.montant_total_prete)}</div><div class="stat-label">Total prêté (FCFA)</div></div>
-    <div class="stat-card danger"><div class="stat-value">${stats.remboursements.echeances_en_retard}</div><div class="stat-label">Retards</div></div>
-    <div class="stat-card success"><div class="stat-value">${fmtK(stats.remboursements.montant_rembourse)}</div><div class="stat-label">Remboursé (FCFA)</div></div>
-  `;
-
   const tauxRemb = stats.prets.montant_total_prete > 0
     ? Math.round((stats.remboursements.montant_rembourse / stats.prets.montant_total_prete) * 100) : 0;
   const tauxApprob = stats.demandes.total > 0
     ? Math.round((stats.demandes.approuvees / stats.demandes.total) * 100) : 0;
-  document.getElementById('admin-kpi').innerHTML = `
-    <div class="kpi-item"><div class="kpi-val">${tauxRemb}%</div><div class="kpi-lbl">Taux de remboursement</div></div>
-    <div class="kpi-item"><div class="kpi-val">${tauxApprob}%</div><div class="kpi-lbl">Taux d'approbation</div></div>
-    <div class="kpi-item"><div class="kpi-val">${stats.prets.soldes}</div><div class="kpi-lbl">Prêts soldés</div></div>
-    <div class="kpi-item"><div class="kpi-val">${stats.utilisateurs.clients}</div><div class="kpi-lbl">Clients</div></div>
-    <div class="kpi-item"><div class="kpi-val">${stats.utilisateurs.agents}</div><div class="kpi-lbl">Agents</div></div>
-    <div class="kpi-item"><div class="kpi-val">${stats.demandes.refusees}</div><div class="kpi-lbl">Demandes refusées</div></div>
+  const tauxRetard = stats.remboursements.echeances_payees + stats.remboursements.echeances_en_attente + stats.remboursements.echeances_en_retard > 0
+    ? Math.round((stats.remboursements.echeances_en_retard / (stats.remboursements.echeances_payees + stats.remboursements.echeances_en_attente + stats.remboursements.echeances_en_retard)) * 100) : 0;
+
+  // ── Stat cards
+  document.getElementById('admin-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-value">${stats.utilisateurs.total}</div>
+      <div class="stat-label">Utilisateurs</div>
+      <div class="stat-sub">${stats.utilisateurs.clients} clients · ${stats.utilisateurs.agents} agents</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-value">${stats.demandes.en_attente}</div>
+      <div class="stat-label">En attente</div>
+      <div class="stat-sub">${stats.demandes.total} demandes au total</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-icon">💳</div>
+      <div class="stat-value">${stats.prets.actifs}</div>
+      <div class="stat-label">Prêts actifs</div>
+      <div class="stat-sub">${stats.prets.soldes} soldés</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-icon">💰</div>
+      <div class="stat-value">${fmtK(stats.prets.montant_total_prete)}</div>
+      <div class="stat-label">Total prêté (FCFA)</div>
+      <div class="stat-sub">${fmtK(stats.remboursements.montant_rembourse)} remboursé</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-icon">⚠️</div>
+      <div class="stat-value">${stats.remboursements.echeances_en_retard}</div>
+      <div class="stat-label">Retards</div>
+      <div class="stat-sub">${stats.remboursements.echeances_en_attente} en attente</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-icon">📈</div>
+      <div class="stat-value">${tauxRemb}%</div>
+      <div class="stat-label">Taux remboursement</div>
+      <div class="stat-sub">${tauxApprob}% approbation</div>
+    </div>
   `;
+
+  // ── KPI gauges
+  document.getElementById('admin-kpi').innerHTML = `
+    ${kpiGauge(tauxRemb, 'Remboursement', '#38a169')}
+    ${kpiGauge(tauxApprob, 'Approbation', '#1a56db')}
+    ${kpiGauge(100 - tauxRetard, 'Ponctualité', '#d69e2e')}
+    ${kpiPlain(stats.remboursements.echeances_payees, 'Échéances payées', '✓')}
+    ${kpiPlain(stats.prets.soldes, 'Prêts soldés', '🏁')}
+    ${kpiPlain(stats.demandes.refusees, 'Dem. refusées', '✗')}
+  `;
+
+  // ── Graphiques
+  renderCharts(stats);
 
   renderUsers(allUsers);
 
@@ -618,8 +658,185 @@ async function loadAdminDash() {
       </tr>`).join('')}
     </table></div>`;
 
-  // Charger la config
   loadAdminConfig();
+}
+
+function kpiGauge(pct, label, color) {
+  // Demi-cercle SVG (jauge)
+  const clamped = Math.min(100, Math.max(0, pct));
+  const r = 46; const cx = 50; const cy = 50;
+  const circ = Math.PI * r; // demi-circonférence
+  const filled = (clamped / 100) * circ;
+  const empty = circ - filled;
+  // Couleur dégradée selon valeur
+  const trackColor = '#e2e8f0';
+  return `
+    <div class="kpi-gauge-card">
+      <div class="kpi-gauge-wrap">
+        <svg class="kpi-gauge-svg" viewBox="0 0 100 56">
+          <!-- Track -->
+          <path d="M4,50 A46,46 0 0,1 96,50"
+            fill="none" stroke="${trackColor}" stroke-width="9" stroke-linecap="round"/>
+          <!-- Fill -->
+          <path d="M4,50 A46,46 0 0,1 96,50"
+            fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="${filled} ${empty}"
+            stroke-dashoffset="0"
+            style="transition: stroke-dasharray .8s ease"/>
+        </svg>
+      </div>
+      <div class="kpi-gauge-value" style="color:${color}">${clamped}%</div>
+      <div class="kpi-gauge-label">${label}</div>
+    </div>`;
+}
+
+function kpiPlain(val, label, icon) {
+  return `
+    <div class="kpi-plain-card">
+      <div style="font-size:1.4rem;margin-bottom:4px">${icon}</div>
+      <div class="kpi-plain-val">${fmt(val)}</div>
+      <div class="kpi-plain-lbl">${label}</div>
+    </div>`;
+}
+
+function renderCharts(stats) {
+  const COLORS = {
+    blue:   '#1a56db',
+    green:  '#38a169',
+    orange: '#d69e2e',
+    red:    '#e53e3e',
+    gray:   '#a0aec0',
+    purple: '#7c3aed',
+    teal:   '#0d9488',
+  };
+
+  // Détruire les graphiques existants avant de recréer
+  Object.keys(_charts).forEach(k => { if (_charts[k]) { _charts[k].destroy(); delete _charts[k]; } });
+
+  // ── 1. Donut — Répartition demandes
+  const totalDem = stats.demandes.total || 1;
+  document.getElementById('chart-dem-total').textContent = `${stats.demandes.total} au total`;
+  document.getElementById('legend-demandes').innerHTML = [
+    { label: 'En attente', val: stats.demandes.en_attente, color: COLORS.orange },
+    { label: 'Approuvées', val: stats.demandes.approuvees, color: COLORS.green },
+    { label: 'Refusées',   val: stats.demandes.refusees,   color: COLORS.red },
+  ].map(i => `<div class="legend-item"><div class="legend-dot" style="background:${i.color}"></div>${i.label} <strong>(${i.val})</strong></div>`).join('');
+
+  _charts.demandes = new Chart(document.getElementById('chart-demandes'), {
+    type: 'doughnut',
+    data: {
+      labels: ['En attente', 'Approuvées', 'Refusées'],
+      datasets: [{
+        data: [stats.demandes.en_attente, stats.demandes.approuvees, stats.demandes.refusees],
+        backgroundColor: [COLORS.orange, COLORS.green, COLORS.red],
+        borderWidth: 0,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: ctx => ` ${ctx.label} : ${ctx.raw} (${Math.round(ctx.raw / totalDem * 100)}%)`
+        }}
+      }
+    }
+  });
+
+  // ── 2. Barres — Activité mensuelle
+  const mois = stats.activite_mensuelle;
+  _charts.activite = new Chart(document.getElementById('chart-activite'), {
+    type: 'bar',
+    data: {
+      labels: mois.length ? mois.map(m => m.mois) : ['Aucune donnée'],
+      datasets: [
+        {
+          label: 'Demandes',
+          data: mois.length ? mois.map(m => m.demandes) : [0],
+          backgroundColor: COLORS.blue + 'CC',
+          borderRadius: 6,
+        },
+        {
+          label: 'Approuvées',
+          data: mois.length ? mois.map(m => m.approuvees) : [0],
+          backgroundColor: COLORS.green + 'CC',
+          borderRadius: 6,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: '#f0f4f8' }, ticks: { font: { size: 11 }, stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+
+  // ── 3. Donut — État portefeuille prêts
+  const totalPrets = stats.prets.total || 1;
+  document.getElementById('chart-pret-total').textContent = `${stats.prets.total} au total`;
+  document.getElementById('legend-prets').innerHTML = [
+    { label: 'Actifs',  val: stats.prets.actifs,  color: COLORS.blue },
+    { label: 'Soldés',  val: stats.prets.soldes,  color: COLORS.green },
+  ].map(i => `<div class="legend-item"><div class="legend-dot" style="background:${i.color}"></div>${i.label} <strong>(${i.val})</strong></div>`).join('');
+
+  _charts.prets = new Chart(document.getElementById('chart-prets'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Actifs', 'Soldés'],
+      datasets: [{
+        data: [stats.prets.actifs, stats.prets.soldes],
+        backgroundColor: [COLORS.blue, COLORS.green],
+        borderWidth: 0,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: ctx => ` ${ctx.label} : ${ctx.raw} (${Math.round(ctx.raw / totalPrets * 100)}%)`
+        }}
+      }
+    }
+  });
+
+  // ── 4. Barres horizontales — Remboursements
+  const totalPrete = Number(stats.prets.montant_total_prete) || 0;
+  const rembourse = Number(stats.remboursements.montant_rembourse) || 0;
+  const restant   = Math.max(0, totalPrete - rembourse);
+  document.getElementById('chart-remb-subtitle').textContent =
+    `${fmtK(rembourse)} / ${fmtK(totalPrete)} FCFA`;
+
+  _charts.remboursements = new Chart(document.getElementById('chart-remboursements'), {
+    type: 'bar',
+    data: {
+      labels: ['Remboursé', 'Restant dû'],
+      datasets: [{
+        label: 'FCFA',
+        data: [rembourse, restant],
+        backgroundColor: [COLORS.green + 'DD', COLORS.red + 'DD'],
+        borderRadius: 8,
+        barThickness: 48,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${fmtK(ctx.raw)} FCFA` } }
+      },
+      scales: {
+        x: { grid: { color: '#f0f4f8' }, ticks: { callback: v => fmtK(v), font: { size: 11 } }, beginAtZero: true },
+        y: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' } } }
+      }
+    }
+  });
 }
 
 function switchAdminTab(tab) {
