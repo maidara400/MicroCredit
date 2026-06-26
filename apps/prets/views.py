@@ -6,9 +6,9 @@ from drf_spectacular.utils import extend_schema
 from django.utils import timezone
 from django.db.models import Q
 
-from .models import Pret, Echeance
-from .serializers import PretSerializer, EcheanceSerializer
-from apps.users.permissions import IsClient, IsAgentOrAdmin
+from .models import Pret, Echeance, ParametresPret, TranchePret
+from .serializers import PretSerializer, EcheanceSerializer, ParametresPretSerializer, TranchePretSerializer
+from apps.users.permissions import IsClient, IsAgentOrAdmin, IsAdminRole
 
 
 class PretListView(generics.ListAPIView):
@@ -174,7 +174,6 @@ class EcheancesEnRetardView(generics.ListAPIView):
 
     def get_queryset(self):
         from datetime import date
-        # Mettre à jour les statuts en retard automatiquement
         Echeance.objects.filter(
             statut=Echeance.STATUT_EN_ATTENTE,
             date_echeance__lt=date.today()
@@ -184,3 +183,50 @@ class EcheancesEnRetardView(generics.ListAPIView):
     @extend_schema(summary="[Agent/Admin] Lister toutes les échéances en retard")
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+
+class ParametresPretView(APIView):
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(summary="[Admin] Lire les paramètres globaux de prêt")
+    def get(self, request):
+        params = ParametresPret.get()
+        return Response(ParametresPretSerializer(params).data)
+
+    @extend_schema(summary="[Admin] Modifier les paramètres globaux de prêt")
+    def patch(self, request):
+        params = ParametresPret.get()
+        serializer = ParametresPretSerializer(params, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        instance.modifie_par = request.user
+        instance.save()
+        return Response(ParametresPretSerializer(instance).data)
+
+
+class TranchePretListCreateView(generics.ListCreateAPIView):
+    serializer_class = TranchePretSerializer
+    queryset = TranchePret.objects.all()
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsAdminRole()]
+
+    @extend_schema(summary="Lister les tranches de taux d'intérêt")
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(summary="[Admin] Créer une tranche de taux d'intérêt")
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+
+class TranchePretDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TranchePretSerializer
+    queryset = TranchePret.objects.all()
+    permission_classes = [IsAdminRole]
+
+    @extend_schema(summary="[Admin] Modifier ou supprimer une tranche")
+    def patch(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)

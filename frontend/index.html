@@ -11,17 +11,6 @@
 <!-- ===== TOASTS ===== -->
 <div id="toast-container"></div>
 
-<!-- ===== NAVBAR ===== -->
-<nav id="navbar" class="hidden">
-  <div class="nav-brand">💳 MicroCredit</div>
-  <div class="nav-links">
-    <span id="nav-badge"></span>
-    <span id="nav-user"></span>
-    <button onclick="showModal('modal-profil')" class="btn btn-sm btn-outline">Mon profil</button>
-    <button onclick="logout()" class="btn btn-sm btn-danger">Déconnexion</button>
-  </div>
-</nav>
-
 <!-- ===== AUTH ===== -->
 <div id="page-auth">
   <div class="auth-card">
@@ -93,161 +82,273 @@
   </div>
 </div>
 
-<!-- ===== DASHBOARD ===== -->
-<div id="page-dashboard" class="hidden">
-  <div class="container">
+<!-- ===== APP SHELL (sidebar + contenu) ===== -->
+<div id="page-dashboard" class="hidden app-shell">
 
-    <!-- CLIENT -->
-    <div id="dash-client" class="hidden">
-      <div class="page-header">
-        <div>
-          <h2 id="client-welcome"></h2>
-          <p class="page-sub" id="client-date"></p>
-        </div>
-        <button class="btn btn-primary" onclick="showModal('modal-demande')">+ Nouvelle demande</button>
+  <!-- Overlay mobile -->
+  <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <span class="brand-icon">💳</span>
+        <span class="brand-name">MicroCredit</span>
       </div>
+      <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    </div>
 
-      <div class="cards-row" id="client-stats"></div>
+    <!-- Profil utilisateur -->
+    <div class="sidebar-user" onclick="openProfil()">
+      <div class="sidebar-avatar" id="sidebar-avatar"></div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="sidebar-user-name"></div>
+        <div class="sidebar-user-role" id="sidebar-user-role"></div>
+      </div>
+      <span class="sidebar-edit-icon">✏️</span>
+    </div>
 
-      <!-- Barre de progression du prêt actif -->
-      <div id="client-pret-progress" class="hidden">
+    <!-- Navigation -->
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+
+    <!-- Bas de sidebar -->
+    <div class="sidebar-footer">
+      <button class="sidebar-logout" onclick="logout()">
+        <span>🚪</span> Déconnexion
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <div class="app-main">
+    <!-- Topbar mobile -->
+    <header class="topbar">
+      <button class="hamburger" onclick="openSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-title" id="topbar-title">Tableau de bord</div>
+      <div class="topbar-actions">
+        <span class="topbar-badge" id="topbar-badge"></span>
+      </div>
+    </header>
+
+    <!-- Contenu principal -->
+    <main class="main-content" id="main-content">
+
+      <!-- CLIENT -->
+      <div id="dash-client" class="hidden">
+        <div class="page-header">
+          <div>
+            <h2 id="client-welcome"></h2>
+            <p class="page-sub" id="client-date"></p>
+          </div>
+          <button class="btn btn-primary" onclick="showModal('modal-demande')">+ Nouvelle demande</button>
+        </div>
+
+        <div class="cards-row" id="client-stats"></div>
+
+        <div id="client-pret-progress" class="hidden">
+          <div class="section">
+            <div class="section-header">
+              <h3>Prêt en cours</h3>
+              <span id="pret-statut-badge"></span>
+            </div>
+            <div class="pret-info-grid" id="pret-info-grid"></div>
+            <div class="progress-label">
+              <span>Progression du remboursement</span>
+              <span id="progress-pct"></span>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="prochaine-box" id="prochaine-box"></div>
+          </div>
+        </div>
+
         <div class="section">
           <div class="section-header">
-            <h3>Prêt en cours</h3>
-            <span id="pret-statut-badge"></span>
+            <h3>Mes demandes de prêt</h3>
+            <div class="filter-row">
+              <select id="filter-dem-statut" onchange="loadClientDash()">
+                <option value="">Tous les statuts</option>
+                <option value="en_attente">En attente</option>
+                <option value="approuve">Approuvées</option>
+                <option value="refuse">Refusées</option>
+              </select>
+            </div>
           </div>
-          <div class="pret-info-grid" id="pret-info-grid"></div>
-          <div class="progress-label">
-            <span>Progression du remboursement</span>
-            <span id="progress-pct"></span>
+          <div id="client-demandes"></div>
+        </div>
+
+        <div class="section" id="section-echeances" style="display:none">
+          <div class="section-header">
+            <h3>Plan de remboursement</h3>
+            <button class="btn btn-sm btn-outline" onclick="printEcheances()">🖨 Imprimer</button>
           </div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar" id="progress-bar"></div>
+          <div id="client-echeances"></div>
+        </div>
+
+        <div class="section">
+          <h3>Historique des prêts</h3>
+          <div id="client-historique"></div>
+        </div>
+      </div>
+
+      <!-- AGENT -->
+      <div id="dash-agent" class="hidden">
+        <div class="page-header">
+          <div>
+            <h2 id="agent-welcome"></h2>
+            <p class="page-sub">Gestion des dossiers de crédit</p>
           </div>
-          <div class="prochaine-box" id="prochaine-box"></div>
+          <button class="btn btn-outline" onclick="loadAgentDash()">↺ Actualiser</button>
         </div>
-      </div>
 
-      <div class="section">
-        <div class="section-header">
-          <h3>Mes demandes de prêt</h3>
-          <div class="filter-row">
-            <select id="filter-dem-statut" onchange="loadClientDash()">
-              <option value="">Tous les statuts</option>
-              <option value="en_attente">En attente</option>
-              <option value="approuve">Approuvées</option>
-              <option value="refuse">Refusées</option>
-            </select>
+        <div class="cards-row" id="agent-stats"></div>
+
+        <div class="section">
+          <div class="section-header">
+            <h3>📋 Dossiers en attente</h3>
+            <span id="agent-attente-count" class="badge badge-warning"></span>
           </div>
+          <div id="agent-demandes-attente"></div>
         </div>
-        <div id="client-demandes"></div>
-      </div>
 
-      <div class="section" id="section-echeances" style="display:none">
-        <div class="section-header">
-          <h3>Plan de remboursement</h3>
-          <button class="btn btn-sm btn-outline" onclick="printEcheances()">🖨 Imprimer</button>
-        </div>
-        <div id="client-echeances"></div>
-      </div>
-
-      <div class="section">
-        <h3>Historique des prêts</h3>
-        <div id="client-historique"></div>
-      </div>
-    </div>
-
-    <!-- AGENT -->
-    <div id="dash-agent" class="hidden">
-      <div class="page-header">
-        <div>
-          <h2 id="agent-welcome"></h2>
-          <p class="page-sub">Gestion des dossiers de crédit</p>
-        </div>
-        <button class="btn btn-outline" onclick="loadAgentDash()">↺ Actualiser</button>
-      </div>
-
-      <div class="cards-row" id="agent-stats"></div>
-
-      <div class="section">
-        <div class="section-header">
-          <h3>📋 Dossiers en attente de traitement</h3>
-          <span id="agent-attente-count" class="badge badge-warning"></span>
-        </div>
-        <div id="agent-demandes-attente"></div>
-      </div>
-
-      <div class="section">
-        <div class="section-header">
-          <h3>📁 Tous les dossiers</h3>
-          <div class="filter-row">
-            <input type="text" id="agent-search" placeholder="Rechercher un client..." oninput="loadAgentDash()" style="padding:6px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.85rem;outline:none">
-            <select id="agent-filter-statut" onchange="loadAgentDash()">
-              <option value="">Tous</option>
-              <option value="en_attente">En attente</option>
-              <option value="approuve">Approuvées</option>
-              <option value="refuse">Refusées</option>
-            </select>
+        <div class="section">
+          <div class="section-header">
+            <h3>📁 Tous les dossiers</h3>
+            <div class="filter-row">
+              <input type="text" id="agent-search" placeholder="Rechercher un client..." oninput="loadAgentDash()" class="filter-input">
+              <select id="agent-filter-statut" onchange="loadAgentDash()">
+                <option value="">Tous</option>
+                <option value="en_attente">En attente</option>
+                <option value="approuve">Approuvées</option>
+                <option value="refuse">Refusées</option>
+              </select>
+            </div>
           </div>
+          <div id="agent-demandes-all"></div>
         </div>
-        <div id="agent-demandes-all"></div>
-      </div>
 
-      <div class="section">
-        <div class="section-header">
-          <h3>⚠️ Échéances en retard</h3>
-          <span id="agent-retard-count" class="badge badge-danger"></span>
+        <div class="section">
+          <div class="section-header">
+            <h3>⚠️ Échéances en retard</h3>
+            <span id="agent-retard-count" class="badge badge-danger"></span>
+          </div>
+          <div id="agent-retards"></div>
         </div>
-        <div id="agent-retards"></div>
-      </div>
 
-      <div class="section">
-        <h3>💼 Tous les prêts actifs</h3>
-        <div id="agent-prets"></div>
-      </div>
-    </div>
-
-    <!-- ADMIN -->
-    <div id="dash-admin" class="hidden">
-      <div class="page-header">
-        <div>
-          <h2 id="admin-welcome"></h2>
-          <p class="page-sub">Vue d'ensemble de la plateforme</p>
+        <div class="section">
+          <h3>💼 Tous les prêts actifs</h3>
+          <div id="agent-prets"></div>
         </div>
-        <button class="btn btn-primary" onclick="showModal('modal-create-user')">+ Créer un utilisateur</button>
       </div>
 
-      <div class="cards-row" id="admin-stats"></div>
-
-      <div class="section">
-        <div class="section-header">
-          <h3>Indicateurs clés</h3>
+      <!-- ADMIN -->
+      <div id="dash-admin" class="hidden">
+        <div class="page-header">
+          <div>
+            <h2 id="admin-welcome"></h2>
+            <p class="page-sub">Vue d'ensemble de la plateforme</p>
+          </div>
+          <button class="btn btn-primary" onclick="showModal('modal-create-user')">+ Créer un utilisateur</button>
         </div>
-        <div class="kpi-grid" id="admin-kpi"></div>
-      </div>
 
-      <div class="section">
-        <div class="section-header">
-          <h3>Gestion des utilisateurs</h3>
-          <div class="filter-row">
-            <input type="text" id="admin-search-user" placeholder="Rechercher..." oninput="filterUsers()" style="padding:6px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.85rem;outline:none">
-            <select id="admin-filter-role" onchange="filterUsers()">
-              <option value="">Tous les rôles</option>
-              <option value="client">Clients</option>
-              <option value="agent">Agents</option>
-              <option value="admin">Admins</option>
-            </select>
+        <!-- Sous-sections admin via tabs -->
+        <div class="admin-tabs">
+          <button class="admin-tab active" onclick="switchAdminTab('overview')" id="tab-overview">Vue générale</button>
+          <button class="admin-tab" onclick="switchAdminTab('users')" id="tab-users">Utilisateurs</button>
+          <button class="admin-tab" onclick="switchAdminTab('demandes')" id="tab-demandes">Dossiers</button>
+          <button class="admin-tab" onclick="switchAdminTab('config')" id="tab-config">⚙️ Configuration</button>
+        </div>
+
+        <!-- Overview -->
+        <div id="admin-section-overview">
+          <div class="cards-row" id="admin-stats"></div>
+          <div class="section">
+            <div class="section-header"><h3>Indicateurs clés</h3></div>
+            <div class="kpi-grid" id="admin-kpi"></div>
           </div>
         </div>
-        <div id="admin-users"></div>
-      </div>
 
-      <div class="section">
-        <h3>Tous les dossiers</h3>
-        <div id="admin-demandes"></div>
-      </div>
-    </div>
+        <!-- Users -->
+        <div id="admin-section-users" class="hidden">
+          <div class="section">
+            <div class="section-header">
+              <h3>Gestion des utilisateurs</h3>
+              <div class="filter-row">
+                <input type="text" id="admin-search-user" placeholder="Rechercher..." oninput="filterUsers()" class="filter-input">
+                <select id="admin-filter-role" onchange="filterUsers()">
+                  <option value="">Tous les rôles</option>
+                  <option value="client">Clients</option>
+                  <option value="agent">Agents</option>
+                  <option value="admin">Admins</option>
+                </select>
+              </div>
+            </div>
+            <div id="admin-users"></div>
+          </div>
+        </div>
 
+        <!-- Demandes -->
+        <div id="admin-section-demandes" class="hidden">
+          <div class="section">
+            <h3>Tous les dossiers</h3>
+            <div id="admin-demandes"></div>
+          </div>
+        </div>
+
+        <!-- Config prêts -->
+        <div id="admin-section-config" class="hidden">
+          <div class="section">
+            <div class="section-header">
+              <h3>⚙️ Paramètres globaux des prêts</h3>
+              <button class="btn btn-sm btn-primary" onclick="saveParametres()">💾 Enregistrer</button>
+            </div>
+            <div class="config-grid">
+              <div class="form-group">
+                <label>Montant minimum (FCFA)</label>
+                <input type="number" id="cfg-montant-min" step="1000">
+              </div>
+              <div class="form-group">
+                <label>Montant maximum (FCFA)</label>
+                <input type="number" id="cfg-montant-max" step="1000">
+              </div>
+              <div class="form-group">
+                <label>Durée minimum (mois)</label>
+                <input type="number" id="cfg-duree-min" min="1">
+              </div>
+              <div class="form-group">
+                <label>Durée maximum (mois)</label>
+                <input type="number" id="cfg-duree-max" min="1">
+              </div>
+              <div class="form-group">
+                <label>Taux par défaut (% annuel)</label>
+                <input type="number" id="cfg-taux-defaut" step="0.01" min="0">
+              </div>
+              <div class="form-group">
+                <label>Dernière modification</label>
+                <input type="text" id="cfg-date-modif" disabled>
+              </div>
+            </div>
+            <div id="cfg-info" class="info-box hidden"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <h3>Tranches de taux d'intérêt</h3>
+              <button class="btn btn-sm btn-primary" onclick="showModal('modal-tranche')">+ Ajouter une tranche</button>
+            </div>
+            <p style="font-size:0.83rem;color:#718096;margin-bottom:16px">
+              Les taux sont appliqués automatiquement lors de l'approbation d'une demande selon le montant.
+            </p>
+            <div id="admin-tranches"></div>
+          </div>
+        </div>
+
+      </div><!-- /dash-admin -->
+
+    </main>
   </div>
 </div>
 
@@ -263,8 +364,8 @@
     <form onsubmit="submitDemande(event)">
       <div class="form-group">
         <label>Montant souhaité (FCFA)</label>
-        <input type="number" id="dem-montant" min="10000" max="5000000" step="1000" required placeholder="200 000">
-        <small>Entre 10 000 et 5 000 000 FCFA</small>
+        <input type="number" id="dem-montant" step="1000" required placeholder="200 000">
+        <small id="dem-montant-hint">Chargement des limites...</small>
       </div>
       <div class="form-group">
         <label>Durée de remboursement</label>
@@ -273,8 +374,10 @@
           <input type="number" id="dem-duree" min="1" max="36" required value="12" oninput="syncDuree(this.value)">
           <span>mois</span>
         </div>
+        <small id="dem-duree-hint"></small>
       </div>
       <div id="dem-mensualite" class="info-box hidden"></div>
+      <div id="dem-taux-info" class="info-box hidden" style="background:#f0fff4;border-color:#9ae6b4;color:#276749"></div>
       <div class="form-group">
         <label>Motif du prêt</label>
         <textarea id="dem-motif" required rows="3" placeholder="Décrivez l'objet de votre demande..."></textarea>
@@ -357,6 +460,42 @@
       <div class="modal-footer">
         <button type="button" onclick="hideModal('modal-create-user')" class="btn btn-outline">Annuler</button>
         <button type="submit" class="btn btn-primary">Créer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tranche de taux -->
+<div id="modal-tranche" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="tranche-modal-title">Nouvelle tranche de taux</h3>
+      <button onclick="hideModal('modal-tranche')" class="close-btn">&times;</button>
+    </div>
+    <form onsubmit="saveTranche(event)">
+      <input type="hidden" id="tranche-id">
+      <div class="form-group">
+        <label>Libellé (optionnel)</label>
+        <input type="text" id="tranche-libelle" placeholder="Ex: Petits montants">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Montant min (FCFA)</label>
+          <input type="number" id="tranche-min" required min="0" step="1000">
+        </div>
+        <div class="form-group">
+          <label>Montant max (FCFA) <small>vide = illimité</small></label>
+          <input type="number" id="tranche-max" step="1000" placeholder="illimité">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Taux annuel (%)</label>
+        <input type="number" id="tranche-taux" required step="0.01" min="0" max="100" placeholder="5.00">
+      </div>
+      <div id="tranche-error" class="error hidden"></div>
+      <div class="modal-footer">
+        <button type="button" onclick="hideModal('modal-tranche')" class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
       </div>
     </form>
   </div>

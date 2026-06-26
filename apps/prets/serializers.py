@@ -1,6 +1,28 @@
 from rest_framework import serializers
-from .models import Pret, Echeance
+from .models import Pret, Echeance, ParametresPret, TranchePret
 from apps.users.serializers import UserSerializer
+
+
+class TranchePretSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TranchePret
+        fields = ['id', 'montant_min', 'montant_max', 'taux_annuel', 'libelle']
+
+
+class ParametresPretSerializer(serializers.ModelSerializer):
+    tranches = TranchePretSerializer(source='tranchepret_set', many=True, read_only=True)
+    modifie_par_nom = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ParametresPret
+        fields = ['id', 'montant_min', 'montant_max', 'duree_min', 'duree_max',
+                  'taux_defaut', 'date_modification', 'modifie_par_nom', 'tranches']
+        read_only_fields = ['id', 'date_modification', 'modifie_par_nom', 'tranches']
+
+    def get_modifie_par_nom(self, obj):
+        if obj.modifie_par:
+            return f"{obj.modifie_par.first_name} {obj.modifie_par.last_name}"
+        return None
 
 
 class EcheanceSerializer(serializers.ModelSerializer):
@@ -10,7 +32,8 @@ class EcheanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Echeance
-        fields = ['id', 'pret', 'numero', 'montant_du', 'date_echeance', 'date_paiement', 'statut', 'client_nom', 'client_email', 'jours_retard']
+        fields = ['id', 'pret', 'numero', 'montant_capital', 'montant_interet', 'montant_du',
+                  'date_echeance', 'date_paiement', 'statut', 'client_nom', 'client_email', 'jours_retard']
         read_only_fields = fields
 
     def get_client_nom(self, obj):
@@ -38,7 +61,8 @@ class PretSerializer(serializers.ModelSerializer):
         model = Pret
         fields = [
             'id', 'demande', 'client', 'client_detail',
-            'montant_total', 'mensualite', 'duree_mois', 'statut',
+            'montant_total', 'mensualite', 'duree_mois',
+            'taux_annuel', 'montant_interets', 'statut',
             'date_debut', 'date_fin_prevue',
             'echeances_payees', 'echeances_restantes',
             'montant_rembourse', 'montant_restant',

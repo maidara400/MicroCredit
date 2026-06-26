@@ -41,7 +41,23 @@ class DemandePretCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context['request']
         client = request.user
-        from apps.prets.models import Pret
+        from apps.prets.models import Pret, ParametresPret
+        params = ParametresPret.get()
+
+        montant = attrs.get('montant')
+        duree = attrs.get('duree_mois')
+
+        if montant is not None:
+            if montant < params.montant_min:
+                raise serializers.ValidationError(f"Montant minimum : {params.montant_min} FCFA.")
+            if montant > params.montant_max:
+                raise serializers.ValidationError(f"Montant maximum autorisé : {params.montant_max} FCFA.")
+        if duree is not None:
+            if duree < params.duree_min:
+                raise serializers.ValidationError(f"Durée minimum : {params.duree_min} mois.")
+            if duree > params.duree_max:
+                raise serializers.ValidationError(f"Durée maximum : {params.duree_max} mois.")
+
         if Pret.objects.filter(client=client, statut='actif').exists():
             raise serializers.ValidationError("Vous avez déjà un prêt actif.")
         if DemandePret.objects.filter(client=client, statut='en_attente').exists():

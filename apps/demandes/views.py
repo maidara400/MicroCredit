@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from django.utils import timezone
+from django.db import models
 from django.db.models import Q
 
 from .models import DemandePret
@@ -91,35 +92,85 @@ class ApprouverDemandeView(APIView):
         demande.save()
 
         # Création du prêt et des échéances
-        from apps.prets.models import Pret, Echeance
-        from decimal import Decimal
+        from apps.prets.models import Pret, Echeance, ParametresPret, TranchePret
+        from decimal import Decimal, ROUND_HALF_UP
         from datetime import date
         from dateutil.relativedelta import relativedelta
 
-        mensualite = round(Decimal(str(demande.montant)) / Decimal(str(demande.duree_mois)), 2)
+        montant = Decimal(str(demande.montant))
+        n = demande.duree_mois
         date_debut = date.today()
-        date_fin = date_debut + relativedelta(months=demande.duree_mois)
+        date_fin = date_debut + relativedelta(months=n)
+
+        # Trouver le taux selon la tranche
+        tranche = TranchePret.objects.filter(montant_min__lte=montant).filter(
+            models.Q(montant_max__isnull=True) | models.Q(montant_max__gte=montant)
+        ).order_by('-montant_min').first()
+
+        if tranche:
+            taux_annuel = Decimal(str(tranche.taux_annuel))
+        else:
+            params = ParametresPret.get()
+            taux_annuel = Decimal(str(params.taux_defaut))
+
+        # Calcul des mensualités avec intérêts (méthode amortissement constant)
+        # taux mensuel = taux_annuel / 12 / 100
+        taux_mensuel = taux_annuel / Decimal('12') / Decimal('100')
+
+        echeances_data = []
+        if taux_mensuel == 0:
+            capital_par_mois = (montant / n).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            mensualite = capital_par_mois
+            montant_interets = Decimal('0')
+            capital_restant = montant
+            for i in range(1, n + 1):
+                cap = capital_par_mois if i < n else capital_restant
+                echeances_data.append({'capital': cap, 'interet': Decimal('0'), 'total': cap})
+                capital_restant -= cap
+        else:
+            # Formule annuité constante : M = P * r*(1+r)^n / ((1+r)^n - 1)
+            r = taux_mensuel
+            facteur = (1 + r) ** n
+            mensualite = (montant * r * facteur / (facteur - 1)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            capital_restant = montant
+            montant_interets = Decimal('0')
+            for i in range(1, n + 1):
+                interet = (capital_restant * r).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                capital = (mensualite - interet).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                if i == n:
+                    # Ajuster la dernière échéance pour solder exactement
+                    capital = capital_restant
+                    mensualite_i = capital + interet
+                else:
+                    mensualite_i = mensualite
+                montant_interets += interet
+                echeances_data.append({'capital': capital, 'interet': interet, 'total': mensualite_i})
+                capital_restant -= capital
 
         pret = Pret.objects.create(
             demande=demande,
             client=demande.client,
-            montant_total=demande.montant,
+            montant_total=montant,
             mensualite=mensualite,
-            duree_mois=demande.duree_mois,
+            duree_mois=n,
+            taux_annuel=taux_annuel,
+            montant_interets=montant_interets,
             date_debut=date_debut,
             date_fin_prevue=date_fin,
         )
 
         # Générer les N échéances
-        echeances = []
-        for i in range(1, demande.duree_mois + 1):
-            echeances.append(Echeance(
+        echeances_objs = []
+        for i, ed in enumerate(echeances_data, 1):
+            echeances_objs.append(Echeance(
                 pret=pret,
                 numero=i,
-                montant_du=mensualite,
+                montant_capital=ed['capital'],
+                montant_interet=ed['interet'],
+                montant_du=ed['total'],
                 date_echeance=date_debut + relativedelta(months=i),
             ))
-        Echeance.objects.bulk_create(echeances)
+        Echeance.objects.bulk_create(echeances_objs)
 
         return Response({
             'detail': 'Demande approuvée. Prêt créé avec succès.',
