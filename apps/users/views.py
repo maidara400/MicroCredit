@@ -54,7 +54,7 @@ class MeView(generics.RetrieveUpdateAPIView):
         return Response(UserSerializer(request.user).data)
 
     def get_object(self):
-        return request.user
+        return self.request.user
 
     def put(self, request, *args, **kwargs):
         serializer = UserSerializer(request.user, data=request.data, partial=True)
