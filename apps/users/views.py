@@ -97,7 +97,8 @@ class AdminStatsView(APIView):
     def get(self, request):
         from apps.demandes.models import DemandePret
         from apps.prets.models import Pret, Echeance
-        from django.db.models import Sum, Count, Q, TruncMonth
+        from django.db.models import Sum, Count, Q
+        from django.db.models.functions import TruncMonth
         from django.utils import timezone
         import datetime
 
