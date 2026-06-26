@@ -8,18 +8,24 @@
 </head>
 <body>
 
+<!-- ===== TOASTS ===== -->
+<div id="toast-container"></div>
+
 <!-- ===== NAVBAR ===== -->
 <nav id="navbar" class="hidden">
-  <div class="nav-brand">MicroCredit</div>
+  <div class="nav-brand">💳 MicroCredit</div>
   <div class="nav-links">
+    <span id="nav-badge"></span>
     <span id="nav-user"></span>
-    <button onclick="logout()" class="btn btn-sm btn-outline">Déconnexion</button>
+    <button onclick="showModal('modal-profil')" class="btn btn-sm btn-outline">Mon profil</button>
+    <button onclick="logout()" class="btn btn-sm btn-danger">Déconnexion</button>
   </div>
 </nav>
 
 <!-- ===== AUTH ===== -->
 <div id="page-auth">
   <div class="auth-card">
+    <div class="auth-logo">💳</div>
     <h1>MicroCredit</h1>
     <p class="subtitle">Gestion de microcrédit — ISI L3 2025-2026</p>
 
@@ -28,7 +34,6 @@
       <button class="tab" onclick="showTab('register')">Inscription</button>
     </div>
 
-    <!-- Login -->
     <form id="form-login" onsubmit="login(event)">
       <div class="form-group">
         <label>Email</label>
@@ -36,35 +41,39 @@
       </div>
       <div class="form-group">
         <label>Mot de passe</label>
-        <input type="password" id="login-password" required placeholder="••••••••">
+        <div class="input-icon">
+          <input type="password" id="login-password" required placeholder="••••••••">
+          <button type="button" class="eye-btn" onclick="togglePwd('login-password', this)">👁</button>
+        </div>
       </div>
       <div id="login-error" class="error hidden"></div>
-      <button type="submit" class="btn btn-primary btn-full">Se connecter</button>
+      <button type="submit" class="btn btn-primary btn-full" id="btn-login">Se connecter</button>
       <div class="demo-accounts">
-        <p>Comptes de démo :</p>
-        <button type="button" onclick="fillDemo('admin@microcredit.sn','Admin1234!')">Admin</button>
-        <button type="button" onclick="fillDemo('agent@microcredit.sn','Agent1234!')">Agent</button>
-        <button type="button" onclick="fillDemo('client@microcredit.sn','Client1234!')">Client</button>
+        <p>Connexion rapide :</p>
+        <button type="button" onclick="fillDemo('admin@microcredit.sn','Admin1234!')">👑 Admin</button>
+        <button type="button" onclick="fillDemo('agent@microcredit.sn','Agent1234!')">🧑‍💼 Agent</button>
+        <button type="button" onclick="fillDemo('client@microcredit.sn','Client1234!')">👤 Client</button>
       </div>
     </form>
 
-    <!-- Register -->
     <form id="form-register" class="hidden" onsubmit="register(event)">
-      <div class="form-group">
-        <label>Prénom</label>
-        <input type="text" id="reg-firstname" required>
-      </div>
-      <div class="form-group">
-        <label>Nom</label>
-        <input type="text" id="reg-lastname" required>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prénom</label>
+          <input type="text" id="reg-firstname" required placeholder="Fatou">
+        </div>
+        <div class="form-group">
+          <label>Nom</label>
+          <input type="text" id="reg-lastname" required placeholder="Diallo">
+        </div>
       </div>
       <div class="form-group">
         <label>Nom d'utilisateur</label>
-        <input type="text" id="reg-username" required>
+        <input type="text" id="reg-username" required placeholder="fatou_diallo">
       </div>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="reg-email" required>
+        <input type="email" id="reg-email" required placeholder="fatou@email.com">
       </div>
       <div class="form-group">
         <label>Téléphone</label>
@@ -79,7 +88,7 @@
         <input type="password" id="reg-password2" required>
       </div>
       <div id="register-error" class="error hidden"></div>
-      <button type="submit" class="btn btn-primary btn-full">S'inscrire</button>
+      <button type="submit" class="btn btn-primary btn-full">Créer mon compte</button>
     </form>
   </div>
 </div>
@@ -88,64 +97,163 @@
 <div id="page-dashboard" class="hidden">
   <div class="container">
 
-    <!-- CLIENT DASHBOARD -->
+    <!-- CLIENT -->
     <div id="dash-client" class="hidden">
-      <h2>Tableau de bord — Client</h2>
+      <div class="page-header">
+        <div>
+          <h2 id="client-welcome"></h2>
+          <p class="page-sub" id="client-date"></p>
+        </div>
+        <button class="btn btn-primary" onclick="showModal('modal-demande')">+ Nouvelle demande</button>
+      </div>
+
       <div class="cards-row" id="client-stats"></div>
+
+      <!-- Barre de progression du prêt actif -->
+      <div id="client-pret-progress" class="hidden">
+        <div class="section">
+          <div class="section-header">
+            <h3>Prêt en cours</h3>
+            <span id="pret-statut-badge"></span>
+          </div>
+          <div class="pret-info-grid" id="pret-info-grid"></div>
+          <div class="progress-label">
+            <span>Progression du remboursement</span>
+            <span id="progress-pct"></span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <div class="prochaine-box" id="prochaine-box"></div>
+        </div>
+      </div>
 
       <div class="section">
         <div class="section-header">
           <h3>Mes demandes de prêt</h3>
-          <button class="btn btn-primary" onclick="showModal('modal-demande')">+ Nouvelle demande</button>
+          <div class="filter-row">
+            <select id="filter-dem-statut" onchange="loadClientDash()">
+              <option value="">Tous les statuts</option>
+              <option value="en_attente">En attente</option>
+              <option value="approuve">Approuvées</option>
+              <option value="refuse">Refusées</option>
+            </select>
+          </div>
         </div>
         <div id="client-demandes"></div>
       </div>
 
-      <div class="section">
-        <h3>Mon prêt actif</h3>
-        <div id="client-pret"></div>
-      </div>
-
-      <div class="section">
-        <h3>Plan de remboursement</h3>
+      <div class="section" id="section-echeances" style="display:none">
+        <div class="section-header">
+          <h3>Plan de remboursement</h3>
+          <button class="btn btn-sm btn-outline" onclick="printEcheances()">🖨 Imprimer</button>
+        </div>
         <div id="client-echeances"></div>
       </div>
+
+      <div class="section">
+        <h3>Historique des prêts</h3>
+        <div id="client-historique"></div>
+      </div>
     </div>
 
-    <!-- AGENT DASHBOARD -->
+    <!-- AGENT -->
     <div id="dash-agent" class="hidden">
-      <h2>Tableau de bord — Agent de crédit</h2>
-      <div class="section">
-        <h3>Dossiers en attente</h3>
-        <div id="agent-demandes-attente"></div>
+      <div class="page-header">
+        <div>
+          <h2 id="agent-welcome"></h2>
+          <p class="page-sub">Gestion des dossiers de crédit</p>
+        </div>
+        <button class="btn btn-outline" onclick="loadAgentDash()">↺ Actualiser</button>
       </div>
-      <div class="section">
-        <h3>Tous les dossiers</h3>
-        <div id="agent-demandes-all"></div>
-      </div>
-      <div class="section">
-        <h3>Échéances en retard</h3>
-        <div id="agent-retards"></div>
-      </div>
-    </div>
 
-    <!-- ADMIN DASHBOARD -->
-    <div id="dash-admin" class="hidden">
-      <h2>Tableau de bord — Administrateur</h2>
-      <div class="cards-row" id="admin-stats"></div>
+      <div class="cards-row" id="agent-stats"></div>
+
       <div class="section">
         <div class="section-header">
-          <h3>Utilisateurs</h3>
-          <button class="btn btn-primary" onclick="showModal('modal-create-user')">+ Créer un agent</button>
+          <h3>📋 Dossiers en attente de traitement</h3>
+          <span id="agent-attente-count" class="badge badge-warning"></span>
+        </div>
+        <div id="agent-demandes-attente"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h3>📁 Tous les dossiers</h3>
+          <div class="filter-row">
+            <input type="text" id="agent-search" placeholder="Rechercher un client..." oninput="loadAgentDash()" style="padding:6px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.85rem;outline:none">
+            <select id="agent-filter-statut" onchange="loadAgentDash()">
+              <option value="">Tous</option>
+              <option value="en_attente">En attente</option>
+              <option value="approuve">Approuvées</option>
+              <option value="refuse">Refusées</option>
+            </select>
+          </div>
+        </div>
+        <div id="agent-demandes-all"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h3>⚠️ Échéances en retard</h3>
+          <span id="agent-retard-count" class="badge badge-danger"></span>
+        </div>
+        <div id="agent-retards"></div>
+      </div>
+
+      <div class="section">
+        <h3>💼 Tous les prêts actifs</h3>
+        <div id="agent-prets"></div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="dash-admin" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2 id="admin-welcome"></h2>
+          <p class="page-sub">Vue d'ensemble de la plateforme</p>
+        </div>
+        <button class="btn btn-primary" onclick="showModal('modal-create-user')">+ Créer un utilisateur</button>
+      </div>
+
+      <div class="cards-row" id="admin-stats"></div>
+
+      <div class="section">
+        <div class="section-header">
+          <h3>Indicateurs clés</h3>
+        </div>
+        <div class="kpi-grid" id="admin-kpi"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h3>Gestion des utilisateurs</h3>
+          <div class="filter-row">
+            <input type="text" id="admin-search-user" placeholder="Rechercher..." oninput="filterUsers()" style="padding:6px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.85rem;outline:none">
+            <select id="admin-filter-role" onchange="filterUsers()">
+              <option value="">Tous les rôles</option>
+              <option value="client">Clients</option>
+              <option value="agent">Agents</option>
+              <option value="admin">Admins</option>
+            </select>
+          </div>
         </div>
         <div id="admin-users"></div>
       </div>
+
+      <div class="section">
+        <h3>Tous les dossiers</h3>
+        <div id="admin-demandes"></div>
+      </div>
     </div>
+
   </div>
 </div>
 
 <!-- ===== MODALS ===== -->
-<!-- Modal nouvelle demande -->
+
+<!-- Nouvelle demande -->
 <div id="modal-demande" class="modal hidden">
   <div class="modal-content">
     <div class="modal-header">
@@ -155,13 +263,16 @@
     <form onsubmit="submitDemande(event)">
       <div class="form-group">
         <label>Montant souhaité (FCFA)</label>
-        <input type="number" id="dem-montant" min="10000" max="5000000" required placeholder="ex: 200000">
+        <input type="number" id="dem-montant" min="10000" max="5000000" step="1000" required placeholder="200 000">
         <small>Entre 10 000 et 5 000 000 FCFA</small>
       </div>
       <div class="form-group">
-        <label>Durée de remboursement (mois)</label>
-        <input type="number" id="dem-duree" min="1" max="36" required placeholder="ex: 12">
-        <small>Entre 1 et 36 mois</small>
+        <label>Durée de remboursement</label>
+        <div class="slider-wrap">
+          <input type="range" id="dem-duree-range" min="1" max="36" value="12" oninput="syncDuree(this.value)">
+          <input type="number" id="dem-duree" min="1" max="36" required value="12" oninput="syncDuree(this.value)">
+          <span>mois</span>
+        </div>
       </div>
       <div id="dem-mensualite" class="info-box hidden"></div>
       <div class="form-group">
@@ -171,13 +282,13 @@
       <div id="dem-error" class="error hidden"></div>
       <div class="modal-footer">
         <button type="button" onclick="hideModal('modal-demande')" class="btn btn-outline">Annuler</button>
-        <button type="submit" class="btn btn-primary">Soumettre</button>
+        <button type="submit" class="btn btn-primary">Soumettre la demande</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Modal refus -->
+<!-- Refus -->
 <div id="modal-refus" class="modal hidden">
   <div class="modal-content">
     <div class="modal-header">
@@ -186,9 +297,10 @@
     </div>
     <form onsubmit="submitRefus(event)">
       <input type="hidden" id="refus-demande-id">
+      <div class="modal-demande-info" id="refus-demande-info"></div>
       <div class="form-group">
         <label>Motif du refus</label>
-        <textarea id="refus-motif" required rows="3" placeholder="Expliquez le motif du refus..."></textarea>
+        <textarea id="refus-motif" required rows="4" placeholder="Expliquez clairement le motif du refus..."></textarea>
       </div>
       <div id="refus-error" class="error hidden"></div>
       <div class="modal-footer">
@@ -199,7 +311,7 @@
   </div>
 </div>
 
-<!-- Modal créer utilisateur -->
+<!-- Créer utilisateur -->
 <div id="modal-create-user" class="modal hidden">
   <div class="modal-content">
     <div class="modal-header">
@@ -207,13 +319,15 @@
       <button onclick="hideModal('modal-create-user')" class="close-btn">&times;</button>
     </div>
     <form onsubmit="createUser(event)">
-      <div class="form-group">
-        <label>Prénom</label>
-        <input type="text" id="cu-firstname" required>
-      </div>
-      <div class="form-group">
-        <label>Nom</label>
-        <input type="text" id="cu-lastname" required>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prénom</label>
+          <input type="text" id="cu-firstname" required>
+        </div>
+        <div class="form-group">
+          <label>Nom</label>
+          <input type="text" id="cu-lastname" required>
+        </div>
       </div>
       <div class="form-group">
         <label>Nom d'utilisateur</label>
@@ -222,6 +336,10 @@
       <div class="form-group">
         <label>Email</label>
         <input type="email" id="cu-email" required>
+      </div>
+      <div class="form-group">
+        <label>Téléphone</label>
+        <input type="text" id="cu-phone" placeholder="77 000 00 00">
       </div>
       <div class="form-group">
         <label>Rôle</label>
@@ -243,6 +361,60 @@
     </form>
   </div>
 </div>
+
+<!-- Profil utilisateur -->
+<div id="modal-profil" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Mon profil</h3>
+      <button onclick="hideModal('modal-profil')" class="close-btn">&times;</button>
+    </div>
+    <form onsubmit="updateProfil(event)">
+      <div class="profil-avatar" id="profil-avatar"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prénom</label>
+          <input type="text" id="profil-firstname">
+        </div>
+        <div class="form-group">
+          <label>Nom</label>
+          <input type="text" id="profil-lastname">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="profil-email" disabled>
+      </div>
+      <div class="form-group">
+        <label>Téléphone</label>
+        <input type="text" id="profil-phone">
+      </div>
+      <div class="form-group">
+        <label>Adresse</label>
+        <textarea id="profil-adresse" rows="2"></textarea>
+      </div>
+      <div id="profil-error" class="error hidden"></div>
+      <div class="modal-footer">
+        <button type="button" onclick="hideModal('modal-profil')" class="btn btn-outline">Fermer</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Détail demande (agent) -->
+<div id="modal-detail-demande" class="modal hidden">
+  <div class="modal-content modal-lg">
+    <div class="modal-header">
+      <h3 id="detail-demande-title">Dossier #</h3>
+      <button onclick="hideModal('modal-detail-demande')" class="close-btn">&times;</button>
+    </div>
+    <div id="detail-demande-body" style="padding:20px 24px"></div>
+    <div class="modal-footer" style="padding:0 24px 20px" id="detail-demande-actions"></div>
+  </div>
+</div>
+
+<div id="print-area" class="hidden"></div>
 
 <script src="/static/js/app.js"></script>
 </body>
