@@ -97,17 +97,19 @@ class AdminStatsView(APIView):
     def get(self, request):
         from apps.demandes.models import DemandePret
         from apps.prets.models import Pret, Echeance
-        from django.db.models import Sum, Count, TruncMonth
+        from django.db.models import Sum, Count, Q, TruncMonth
         from django.utils import timezone
         import datetime
 
-        # Activité des 6 derniers mois
         six_mois = timezone.now() - datetime.timedelta(days=180)
         demandes_par_mois = (
             DemandePret.objects.filter(date_soumission__gte=six_mois)
             .annotate(mois=TruncMonth('date_soumission'))
             .values('mois')
-            .annotate(total=Count('id'), approuvees=Count('id', filter=__import__('django.db.models', fromlist=['Q']).Q(statut='approuve')))
+            .annotate(
+                total=Count('id'),
+                approuvees=Count('id', filter=Q(statut='approuve'))
+            )
             .order_by('mois')
         )
 
@@ -130,7 +132,6 @@ class AdminStatsView(APIView):
                 'actifs': Pret.objects.filter(statut='actif').count(),
                 'soldes': Pret.objects.filter(statut='solde').count(),
                 'montant_total_prete': Pret.objects.aggregate(total=Sum('montant_total'))['total'] or 0,
-                'montant_moyen': Pret.objects.aggregate(moy=Sum('montant_total'))['moy'] or 0,
             },
             'remboursements': {
                 'echeances_payees': Echeance.objects.filter(statut='paye').count(),
