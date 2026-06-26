@@ -97,13 +97,27 @@ class AdminStatsView(APIView):
     def get(self, request):
         from apps.demandes.models import DemandePret
         from apps.prets.models import Pret, Echeance
-        from django.db.models import Sum, Count
+        from django.db.models import Sum, Count, TruncMonth
+        from django.utils import timezone
+        import datetime
+
+        # Activité des 6 derniers mois
+        six_mois = timezone.now() - datetime.timedelta(days=180)
+        demandes_par_mois = (
+            DemandePret.objects.filter(date_soumission__gte=six_mois)
+            .annotate(mois=TruncMonth('date_soumission'))
+            .values('mois')
+            .annotate(total=Count('id'), approuvees=Count('id', filter=__import__('django.db.models', fromlist=['Q']).Q(statut='approuve')))
+            .order_by('mois')
+        )
 
         stats = {
             'utilisateurs': {
                 'total': User.objects.count(),
                 'clients': User.objects.filter(role='client').count(),
                 'agents': User.objects.filter(role='agent').count(),
+                'admins': User.objects.filter(role='admin').count(),
+                'actifs': User.objects.filter(is_active=True).count(),
             },
             'demandes': {
                 'total': DemandePret.objects.count(),
@@ -116,11 +130,21 @@ class AdminStatsView(APIView):
                 'actifs': Pret.objects.filter(statut='actif').count(),
                 'soldes': Pret.objects.filter(statut='solde').count(),
                 'montant_total_prete': Pret.objects.aggregate(total=Sum('montant_total'))['total'] or 0,
+                'montant_moyen': Pret.objects.aggregate(moy=Sum('montant_total'))['moy'] or 0,
             },
             'remboursements': {
                 'echeances_payees': Echeance.objects.filter(statut='paye').count(),
+                'echeances_en_attente': Echeance.objects.filter(statut='en_attente').count(),
                 'echeances_en_retard': Echeance.objects.filter(statut='en_retard').count(),
                 'montant_rembourse': Echeance.objects.filter(statut='paye').aggregate(total=Sum('montant_du'))['total'] or 0,
-            }
+            },
+            'activite_mensuelle': [
+                {
+                    'mois': item['mois'].strftime('%b %Y'),
+                    'demandes': item['total'],
+                    'approuvees': item['approuvees'],
+                }
+                for item in demandes_par_mois
+            ],
         }
         return Response(stats)
