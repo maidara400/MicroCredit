@@ -75,4 +75,7 @@ Documentation interactive : `http://localhost:8000/api/docs/`
 | Client | client@microcredit.sn | Client1234! |
 
 ## Auteur
-Etudiant L3 Informatique — ISI — Année académique 2025-2026
+
+**Mouhamed Aidara**  
+Licence 3 Informatique — ISI — Année académique 2025-2026  
+Projet Réserve 1 — Professeur Robert DIASSE
