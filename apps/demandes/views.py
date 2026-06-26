@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from django.utils import timezone
+from django.db.models import Q
 
 from .models import DemandePret
 from .serializers import DemandePretSerializer, DemandePretCreateSerializer, RefuserDemandeSerializer
@@ -20,10 +21,22 @@ class DemandePretListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        qs = DemandePret.objects.select_related('client', 'agent')
         if user.is_client:
-            return DemandePret.objects.filter(client=user)
-        # agent et admin voient tout
-        return DemandePret.objects.all().select_related('client', 'agent')
+            qs = qs.filter(client=user)
+
+        # Filtres query params
+        statut = self.request.query_params.get('statut')
+        search = self.request.query_params.get('search')
+        if statut:
+            qs = qs.filter(statut=statut)
+        if search and not user.is_client:
+            qs = qs.filter(
+                Q(client__first_name__icontains=search) |
+                Q(client__last_name__icontains=search) |
+                Q(client__email__icontains=search)
+            )
+        return qs
 
     def get_permissions(self):
         if self.request.method == 'POST':
